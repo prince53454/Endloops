@@ -137,6 +137,14 @@ npm run build
 npm start
 ```
 
+### Deploy to Vercel
+
+The static site and `/api/*` endpoints deploy together. Add `MONGODB_URI` and
+`ADMIN_API_KEY` as Vercel Production environment variables before relying on
+inquiry submissions; serverless local SQLite storage is intentionally disabled.
+Email notifications are optional and remain disabled unless SMTP settings are
+configured. Then deploy with `vercel --prod`.
+
 Use a managed PostgreSQL or MongoDB database for production deployments, especially when running multiple instances. SQLite is intended for local development or a single instance with a durable, private volume. SMTP credentials, database connection strings, and `ADMIN_API_KEY` must be configured through the deployment platform's secret manager; the repository does not contain production secrets.
 
 ---

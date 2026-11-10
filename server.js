@@ -13,6 +13,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const port = Number(process.env.PORT) || 3000;
 const isProduction = process.env.NODE_ENV === "production" || process.argv.includes("--production");
+const isVercel = process.env.VERCEL === "1";
 const databasePath = path.resolve(process.env.DATABASE_PATH || path.join(root, "data", "inquiries.sqlite"));
 const postgresPool = process.env.DATABASE_URL
   ? new pg.Pool({
@@ -53,7 +54,7 @@ const rateLimits = new Map();
 const rateLimitWindowMs = 60 * 60 * 1000;
 const rateLimitMax = 10;
 
-const sqlite = postgresPool || mongoClient ? null : (() => {
+const sqlite = postgresPool || mongoClient || isVercel ? null : (() => {
   fs.mkdirSync(path.dirname(databasePath), { recursive: true });
   const database = new DatabaseSync(databasePath);
   database.exec(`
@@ -388,7 +389,7 @@ app.use((error, _req, res, _next) => {
   res.status(500).json({ error: "An unexpected server error occurred." });
 });
 
-if (isProduction) {
+if (!isVercel && isProduction) {
   const distPath = path.join(root, "dist");
   if (!fs.existsSync(path.join(distPath, "index.html"))) {
     throw new Error("Production build not found. Run `npm run build` first.");
@@ -398,27 +399,31 @@ if (isProduction) {
     if (req.path.startsWith("/api/")) return next();
     res.sendFile(path.join(distPath, "index.html"));
   });
-} else {
+} else if (!isVercel) {
   const { createServer } = await import("vite");
   const vite = await createServer({ server: { middlewareMode: true }, appType: "custom" });
   app.use(vite.middlewares);
 }
 
-const server = app.listen(port, "0.0.0.0", () => {
-  console.log(`Endloops ${isProduction ? "production" : "development"} server listening on http://localhost:${port}`);
-  if (!mailTransport || !process.env.CONTACT_EMAIL) {
-    console.warn("Email notifications are disabled; configure SMTP_* and CONTACT_EMAIL to enable them.");
-  }
-});
+export default app;
 
-function shutdown() {
-  server.close(() => {
-    if (sqlite) sqlite.close();
-    if (postgresPool) postgresPool.end().finally(() => process.exit(0));
-    else if (mongoClient) mongoClient.close().finally(() => process.exit(0));
-    else process.exit(0);
+if (!isVercel) {
+  const server = app.listen(port, "0.0.0.0", () => {
+    console.log(`Endloops ${isProduction ? "production" : "development"} server listening on http://localhost:${port}`);
+    if (!mailTransport || !process.env.CONTACT_EMAIL) {
+      console.warn("Email notifications are disabled; configure SMTP_* and CONTACT_EMAIL to enable them.");
+    }
   });
-}
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+  function shutdown() {
+    server.close(() => {
+      if (sqlite) sqlite.close();
+      if (postgresPool) postgresPool.end().finally(() => process.exit(0));
+      else if (mongoClient) mongoClient.close().finally(() => process.exit(0));
+      else process.exit(0);
+    });
+  }
+
+  process.on("SIGINT", shutdown);
+  process.on("SIGTERM", shutdown);
+}
