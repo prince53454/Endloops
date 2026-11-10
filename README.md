@@ -16,8 +16,9 @@ A production-quality marketing website for **Endloops**, an automation company c
 
 ## 🛠️ Tech Stack
 
-- **Framework:** React 19 + TypeScript
-- **Bundler & Dev Server:** Vite 8
+- **Framework:** React 19 + JavaScript (JSX)
+- **Bundler:** Vite 8
+- **Backend:** Express 4, MongoDB or PostgreSQL (SQLite local fallback), SMTP email notifications
 - **Styling:** Tailwind CSS v4 with custom architectural tokens (`@theme`)
 - **Routing:** React Router v7 (`react-router-dom`)
 - **Animations:** Motion (`motion/react`)
@@ -35,7 +36,7 @@ A production-quality marketing website for **Endloops**, an automation company c
 - **Interactive 5-Step Operating Stepper:** Stage-by-stage walkthrough of document intake, field extraction, deterministic matching, exception flagging, and professional sign-off.
 - **Comparison Table & Categorized Tabs:** Filter standalone tools by *All tools*, *Document processing*, *Review and assurance*, *Reconciliation*, and *Property and procurement*.
 - **Comprehensive FAQ Accordion:** Answering questions on document formats, bulk document volume, exceptions, and professional review.
-- **Accessible Contact & Demo Request Form:** Complete field validation, accessible inline errors (`aria-describedby`), and local confirmation state (*“Request received. We’ll be in touch.”*).
+- **Contact & Demo Request Form:** Accessible client- and server-side validation, persistent SQLite storage, protected inquiry inbox, and optional SMTP notifications.
 - **Zero Hallucinated Metrics:** Grounded in Alkazim's real domain roots in Dubai, with transparent maturity labels (*In use*, *Expanding suite*) and zero fake logos, testimonials, or awards.
 
 ---
@@ -47,38 +48,39 @@ src/
   assets/
   components/
     layout/
-      Navbar.tsx
-      Footer.tsx
+      Navbar.jsx
+      Footer.jsx
     ui/
-      Button.tsx
-      SectionHeading.tsx
-      Card.tsx
-      Badge.tsx
-      FormField.tsx
-      Logo.tsx
-      WorkflowDemo.tsx
+      Button.jsx
+      SectionHeading.jsx
+      Card.jsx
+      Badge.jsx
+      FormField.jsx
+      Logo.jsx
+      WorkflowDemo.jsx
   sections/
-    Hero.tsx
-    ProductCategories.tsx
-    Workflow.tsx
-    Capabilities.tsx
-    Audience.tsx
-    CTA.tsx
+    Hero.jsx
+    ProductCategories.jsx
+    Workflow.jsx
+    Capabilities.jsx
+    Audience.jsx
+    CTA.jsx
   pages/
-    Home.tsx
-    Solutions.tsx
-    Tools.tsx
-    HowItWorks.tsx
-    About.tsx
-    Contact.tsx
+    Home.jsx
+    Solutions.jsx
+    Tools.jsx
+    HowItWorks.jsx
+    About.jsx
+    Contact.jsx
   data/
-    navigation.ts
-    solutions.ts
-    tools.ts
-    faqs.ts
-  App.tsx
-  main.tsx
+    navigation.js
+    solutions.js
+    tools.js
+    faqs.js
+  App.jsx
+  main.jsx
   index.css
+server.js
 ```
 
 ---
@@ -86,7 +88,7 @@ src/
 ## 🚀 Local Development Instructions
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 22.13+
 - npm or bun
 
 ### 1. Installation
@@ -97,30 +99,61 @@ git clone <repo-url>
 cd endloops-website
 
 # Install dependencies
-npm install
+npm install --legacy-peer-deps
 ```
 
 ### 2. Run Locally
 
 ```bash
-# Start development server on port 3000
+# Start the React/Vite site and Express API on port 3000
 npm run dev
 ```
 
 Visit [http://localhost:3000](http://localhost:3000) in your browser.
+
+The contact form writes accepted inquiries to `data/inquiries.sqlite`. Set `PORT` or `DATABASE_PATH` to override the defaults.
+
+### Contact form backend
+
+The API validates every field and stores a request before returning success. It uses PostgreSQL when `DATABASE_URL` is set, MongoDB when `MONGODB_URI` is set, and falls back to a local SQLite database for development. Email alerts are sent when valid SMTP settings are configured; if delivery fails, the inquiry remains saved and the UI reports that email notification needs attention.
+
+Copy `.env.example` to `.env` and configure:
+
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` to enable email.
+- `CONTACT_EMAIL` to choose the inbox receiving new inquiries.
+- `SMTP_FROM` (optional) to set the sender shown on notifications.
+- `ADMIN_API_KEY` to protect the inquiry inbox.
+- `DATABASE_URL` to use PostgreSQL in production; `DATABASE_SSL=true` enables certificate-verified TLS.
+- `MONGODB_URI` and (optionally) `MONGODB_DATABASE` to use MongoDB instead of PostgreSQL.
+- `DATABASE_PATH` (optional) to select the local SQLite file location when PostgreSQL is not configured.
+- `TRUST_PROXY=true` only when deployed behind a trusted reverse proxy.
+
+The private inbox is available at `GET /api/admin/inquiries` with `Authorization: Bearer <ADMIN_API_KEY>`. Use `?limit=50&offset=0` for pagination. Failed email alerts can be retried with `POST /api/admin/inquiries/:id/resend`.
+
+The production server serves both the built frontend and API:
+
+```bash
+npm run build
+npm start
+```
+
+Use a managed PostgreSQL or MongoDB database for production deployments, especially when running multiple instances. SQLite is intended for local development or a single instance with a durable, private volume. SMTP credentials, database connection strings, and `ADMIN_API_KEY` must be configured through the deployment platform's secret manager; the repository does not contain production secrets.
 
 ---
 
 ## 📦 Build Instructions
 
 ```bash
-# Check TypeScript types
+# Check JavaScript syntax
 npm run lint
 
 # Build production bundle
 npm run build
 
-# Preview production build locally
+# Run backend and production frontend integration tests
+npm test
+
+# Build and preview the full production app (frontend + API)
 npm run preview
 ```
 
