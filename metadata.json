@@ -1,0 +1,6 @@
+{
+  "name": "Endloops - Automation for Financial Professionals",
+  "description": "Production website for Endloops, building end-to-end solutions and standalone tools for accountants, auditors, finance teams, and property-management companies.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
